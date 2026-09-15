@@ -1,9 +1,7 @@
 name: release
 
 on:
-  push:
-    tags: ["v*"]
-  workflow_dispatch:
+  workflow_dispatch:  # manual only — pick the branch/tag in the dispatch UI
 
 permissions:
   contents: read
