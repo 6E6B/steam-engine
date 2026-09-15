@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "steam-engine"
+version = "0.1.0"
+description = "Drive a running Steam client's internals over Chrome DevTools Protocol (collections, apps, downloads, all of SteamClient.*)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = ["websockets>=12"]
+
+[project.scripts]
+steam-engine = "steam_engine.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["steam_engine"]
