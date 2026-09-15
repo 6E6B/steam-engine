@@ -1,0 +1,45 @@
+site_name: steam-engine API surface
+site_description: >-
+  Callable/readable surface of a live Steam client (SteamClient.* bridge +
+  window.* stores), dumped over CDP.
+docs_dir: docs
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.indexes
+    - toc.integrate
+    - search.highlight
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+plugins:
+  - search
+
+nav:
+  - Overview: index.md
+  - API surface:
+      - Games, apps & library: api/games-apps-library.md
+      - Friends, chat & community: api/friends-chat-community.md
+      - System, hardware & input: api/system-hardware-input.md
+      - Account, auth & storage: api/account-auth-storage.md
+      - UI, browser & window management: api/ui-browser-window.md
+      - Networking & services: api/networking-services.md
+      - Debug & misc helpers: api/debug-misc-helpers.md
+      - Other / uncategorized: api/other.md
+
+markdown_extensions:
+  - toc:
+      permalink: true
+  - tables

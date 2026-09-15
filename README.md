@@ -1,74 +1,78 @@
 # steam-engine
 
-A driver for a running Steam client's internal JS — call any `SteamClient.*`
-bridge method (~600 of them across 45 namespaces) or any `window.*` store
-from Python, over Chrome DevTools Protocol.
+Call a running Steam client’s internal JavaScript API from Python.
 
-Steam's UI runs in CEF. With `--remote-debugging-port` on `steamwebhelper`,
-the `SharedJSContext` renderer (where `collectionStore`, `appStore`,
-`SteamClient`, ... live) is reachable via CDP. Everything goes through
-Steam's real code paths — cloud sync, versioning, tombstones — nothing
-patches files on disk.
+`steam-engine` connects to Steam’s CEF renderer over Chrome DevTools Protocol. It exposes `SteamClient.*` methods and `window.*` stores through a Python proxy, so operations run through Steam itself.
 
-This package is just the transport + dynamic proxy. For a curated
-collections API see the sibling project `steam-collections`.
+For a higher-level collections API, see the sibling project `steam-collections`.
 
-## Setup (Linux)
+## Get started
+
+Install from the repository, then enable debugging in Steam:
 
 ```sh
 pip install -e .
-steam-engine enable --restart   # patches ubuntu12_64/steamwebhelper_sniper_wrap.sh
-steam-engine status             # verify
+steam-engine enable --restart
+steam-engine status
 ```
 
-On Windows/macOS, launch Steam with `-cef-enable-debugging` (or inject
-`--remote-debugging-port` into the webhelper command line). Port defaults to
-1337; override with `STEAM_CDP_PORT`.
+`enable` is Linux-only. It patches `ubuntu12_64/steamwebhelper_sniper_wrap.sh` and backs up the original to `.sh.bak`. Steam updates can replace this wrapper; run `enable` again if the connection stops working.
 
-## API
+On Windows or macOS, launch Steam with `-cef-enable-debugging` or add `--remote-debugging-port` to the webhelper command line.
+
+The default port is `1337`. Set `STEAM_CDP_PORT` to use another port.
+
+## Use from Python
+
+Steam must be running with debugging enabled.
 
 ```python
 from steam_engine import SteamEngine
 
 with SteamEngine.connect() as se:
-    # SteamClient.* — the native bridge. Names resolve case/underscore
-    # insensitively, so get_os_type() finds GetOSType().
+    # Call Steam's native bridge.
     se.client.Apps.SetAppLaunchOptions(292030, "-fullscreen")
-    se.client.Apps.specify_compat_tool(105600, "proton_experimental")
-    se.client.InstallFolder.GetInstallFolders()
-    se.client.Downloads.queue_app_update(582010)
 
-    # window.* — every store (collectionStore, appStore, downloadsStore, ...)
+    # Snake_case works too.
+    se.client.Apps.specify_compat_tool(105600, "proton_experimental")
+
+    # Read a JavaScript property.
     apps = se.window.appStore.allApps.get()
 
-    # escape hatch
-    se.eval("collectionStore.userCollections.length")
+    # Run JavaScript directly.
+    count = se.eval("collectionStore.userCollections.length")
 ```
 
-`JsProxy` rules:
+The proxy supports:
 
-- `proxy.method(*args)` — calls `path(...)`; args JSON-serialized, promises
-  awaited, result JSON-decoded (`None` for undefined/unserializable)
-- `proxy.prop.get()` — read a JSON-serializable property
-- `proxy.prop.keys()` — own property names (for unserializable objects)
-- `proxy.prop[idx]` — index access
+| Syntax                | Behavior                                                     |
+| --------------------- | ------------------------------------------------------------ |
+| `proxy.method(*args)` | Call a method with JSON-serialized arguments; await promises |
+| `proxy.prop.get()`    | Read a JSON-serializable property                            |
+| `proxy.prop.keys()`   | List own property names                                      |
+| `proxy.prop[index]`   | Access an indexed value                                      |
 
-Also: `SteamEngine.status(port)`, `SteamEngine.enable(port, restart)`.
+Method names ignore case and underscores. Results are JSON-decoded; `undefined` and unserializable results become `None`.
 
-## CLI
+## Use from the terminal
 
 ```sh
-steam-engine status              # probe endpoint
-steam-engine targets             # list debuggable targets
-steam-engine enable [--restart]  # patch webhelper wrapper (Linux)
-steam-engine eval '<js>'         # raw JS in SharedJSContext
+steam-engine status             # Check the connection
+steam-engine targets            # List debuggable targets
+steam-engine enable --restart   # Enable debugging and restart Steam (Linux)
+steam-engine eval 'collectionStore.userCollections.length'
 ```
 
-## Caveats
+## API reference
 
-- Internal, undocumented API — names/arg shapes can change between client
-  builds. The dynamic proxy absorbs most churn.
-- Requires a running Steam client with the debug port patched.
-- `steamwebhelper_sniper_wrap.sh` is regenerated on client updates —
-  re-run `enable` (original backed up to `.sh.bak`).
-- Debug port binds to 127.0.0.1 only.
+The generated reference in `docs/` lists the discovered methods and stores. To refresh and browse it:
+
+```sh
+python scripts/dump_api_surface.py
+mkdocs serve
+```
+
+Raw data is available at `docs/data/api_surface.json`.
+
+Steam’s internal API is undocumented. Method names and arguments can change between client builds.
+
